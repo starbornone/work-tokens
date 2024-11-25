@@ -1,10 +1,28 @@
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"
+
 [dependencies]
+# Cryptographic Dependencies
+ed25519-dalek = { version = "1.0", features = ["serde"] }
+hex = "0.4"
 sha2 = "0.10"
+# Configuration Management
+config = "0.13"
+# Database and Persistence
+rusqlite = "0.25"
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+# Networking, Asynchronous I/O, and Web
 tokio = { version = "1", features = ["full"] }
-ed25519-dalek = "1.0"
-rand = "0.8"
-hex = "0.4"
-clap = { version = "3.0", features = ["derive"] }
-rocksdb = "0.17"
+warp = "0.3"
+futures = "0.3"
+# Logging
+log = "0.4"
+env_logger = "0.10"
+# Binary Encoding
+bincode = "1.3"
+# Random Number Generation
+rand = { version = "0.7.0", features = ["std"] }

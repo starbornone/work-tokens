@@ -1,0 +1,8 @@
+[consensus]
+difficulty = 4
+
+[database]
+connection_string = "sqlite://blockchain.db"
+
+[wallet]
+wallet_dir = "./wallets"
