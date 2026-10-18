@@ -1,204 +1,63 @@
 # work-tokens
 
-A blockchain-based platform that issues work tokens as a form of currency for completed work. The system is designed to prevent wealth accumulation by ensuring tokens cannot be hoarded, promoting equitable distribution and continuous participation.
+Rust prototype of a blockchain where work tokens can expire to discourage hoarding. The Cargo package name is `core`.
 
-## Table of Contents
+This is an early scaffold: core modules exist (ledger, PoW, crypto, SQLite, P2P stubs, RPC stubs), but networking, wallet CLI, and on-chain expiration are not fully wired yet.
 
-- [Introduction](#introduction)
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+## Docs
 
-## Introduction
-
-**Work Tokens** is a decentralised application built in Rust, focusing on creating an equitable economic system where tokens are earned through verified work and are subject to expiration to prevent hoarding. This approach aims to address wealth inequality by tying value directly to ongoing contributions rather than accumulation.
-
-## Features
-
-- **Work-Based Token Issuance**: Earn tokens by completing and verifying work tasks.
-- **Token Expiration Mechanism**: Tokens expire after a set period to prevent hoarding.
-- **Use-It-or-Lose-It Policy**: Encourages active participation and circulation of tokens.
-- **Decentralised Consensus**: Secure and efficient consensus mechanism for validating transactions and blocks.
-- **High Performance and Safety**: Built with Rust, ensuring memory safety and concurrency without sacrificing performance.
-- **Peer-to-Peer Networking**: Decentralised P2P network for node communication.
-- **Cryptographic Security**: Utilises modern cryptographic techniques for data integrity and authentication.
+- [Code review and remediation plan](docs/CODE_REVIEW.md)
 
 ## Prerequisites
 
-- **Rust**: You need to have Rust installed (version 1.50 or later). You can install it using `rustup`:
+- Rust (stable) via [rustup](https://rustup.rs/)
+- Cargo (included with Rust)
 
-  ```bash
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  ```
+## Setup
 
-- **Cargo**: Rust's package manager (installed with Rust).
+```bash
+git clone git@github.com:starbornone/work-tokens.git
+cd work-tokens
+cargo build
+cargo test
+```
 
-- **Git**: For cloning the repository.
-
-## Installation
-
-1. **Clone the Repository**
-
-   ```bash
-   git clone git@github.com:starbornone/work-tokens.git
-   cd work-tokens
-   ```
-
-2. **Build the Project**
-
-   ```bash
-   cargo build --release
-   ```
-
-   This will compile the project in release mode for optimal performance.
+Optional config: `config/settings.toml` (defaults are used if missing). Override with `APP__` env vars, e.g. `APP__CONSENSUS__DIFFICULTY=3`.
 
 ## Usage
 
-### Running a Node
-
-To start a node on the Work Tokens Blockchain network:
-
 ```bash
-cargo run --release -- --port 3030 --peer-address <peer_node_address>
+cargo run
 ```
 
-Replace `<peer_node_address>` with the address of a peer node you wish to connect to.
+Prototype startup: load settings → create ledger → sign a sample tx → mine block 1 → validate → persist to SQLite. P2P listen/peer dial and wallet CLI are not implemented yet.
 
-### Command-Line Options
-
-- `--port`: Specify the port on which the node will listen (default: 3030).
-- `--peer-address`: The address of a peer node to connect with at startup.
-- `--config`: Path to a configuration file (optional).
-- `--help`: Display help information about command-line options.
-
-### Submitting Work and Earning Tokens
-
-To simulate submitting work and earning tokens, use the wallet CLI (to be implemented):
-
-```bash
-cargo run --release -- wallet submit-work --details "Completed task XYZ"
-```
-
-### Checking Balance
-
-```bash
-cargo run --release -- wallet balance
-```
-
-### Transferring Tokens
-
-```bash
-cargo run --release -- wallet transfer --to <recipient_address> --amount <token_amount>
-```
-
-## Project Structure
+## Layout
 
 ```plaintext
 work-tokens/
 ├── Cargo.toml
-├── Cargo.lock
-├── README.md
-├── LICENSE
-├── src/
-│   ├── main.rs
-│   ├── lib.rs
+├── config/settings.toml
+├── docs/CODE_REVIEW.md
+├── src/                 # library + binary
 │   ├── blockchain/
-│   │   ├── mod.rs
-│   │   ├── block.rs
-│   │   ├── transaction.rs
-│   │   ├── ledger.rs
-│   │   └── merkle_tree.rs
 │   ├── consensus/
-│   │   ├── mod.rs
-│   │   ├── proof_of_work.rs
-│   │   └── validator.rs
 │   ├── crypto/
-│   │   ├── mod.rs
-│   │   ├── hash.rs
-│   │   ├── keys.rs
-│   │   └── signatures.rs
 │   ├── network/
-│   │   ├── mod.rs
-│   │   ├── p2p.rs
-│   │   └── message.rs
 │   ├── storage/
-│   │   ├── mod.rs
-│   │   └── db.rs
 │   ├── token/
-│   │   ├── mod.rs
-│   │   ├── issuance.rs
-│   │   ├── expiration.rs
-│   │   └── management.rs
 │   ├── wallet/
-│   │   ├── mod.rs
-│   │   └── wallet.rs
 │   ├── api/
-│   │   ├── mod.rs
-│   │   └── rpc.rs
 │   ├── config/
-│   │   ├── mod.rs
-│   │   └── settings.rs
 │   └── utils/
-│       ├── mod.rs
-│       └── serialization.rs
-├── tests/
-│   ├── integration_tests.rs
-│   └── blockchain_tests.rs
-├── scripts/
-│   ├── start_node.sh
-│   └── run_tests.sh
-└── docs/
-    ├── design.md
-    ├── api.md
-    └── README.md
+└── tests/blockchain_tests.rs
 ```
-
-- **`src/`**: Contains all Rust source code, organised into modules.
-- **`tests/`**: Contains integration and unit tests.
-- **`scripts/`**: Scripts for automating tasks like starting nodes or running tests.
-- **`docs/`**: Documentation files, including design documents and API references.
 
 ## Contributing
 
-Contributions are welcome! To contribute:
+1. Fork and clone
+2. `git checkout -b feature/your-feature-name`
+3. Make changes; run `cargo test`
+4. Commit, push, open a PR
 
-1. **Fork the Repository**
-
-   Click the "Fork" button at the top-right corner of the repository page.
-
-2. **Clone Your Fork**
-
-   ```bash
-   git clone git@github.com:starbornone/work-tokens.git
-   cd work-tokens
-   ```
-
-3. **Create a Feature Branch**
-
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-4. **Make Your Changes**
-
-   Implement your feature or fix.
-
-5. **Commit Your Changes**
-
-   ```bash
-   git commit -am 'Add new feature'
-   ```
-
-6. **Push to Your Fork**
-
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-7. **Open a Pull Request**
-
-   Go to the original repository and open a pull request from your fork.
+See [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) for prioritized work.
