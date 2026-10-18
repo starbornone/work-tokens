@@ -1,6 +1,5 @@
 use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
 use rand::rngs::OsRng;
-use serde::{Deserialize, Serialize};
 
 /// Generates a new Ed25519 keypair (private and public key).
 ///
@@ -41,7 +40,9 @@ pub fn sign_message(message: &str, keypair: &Keypair) -> Vec<u8> {
 ///
 /// A boolean indicating whether the signature is valid.
 pub fn verify_signature(message: &str, signature: &[u8], public_key: &PublicKey) -> bool {
-    let signature = Signature::from_bytes(signature).expect("Invalid signature format");
+    let Ok(signature) = Signature::from_bytes(signature) else {
+        return false;
+    };
     public_key.verify(message.as_bytes(), &signature).is_ok()
 }
 

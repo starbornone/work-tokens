@@ -2,63 +2,100 @@ use crate::token::expiration::Token;
 use std::collections::HashMap;
 
 pub struct TokenManager {
-    pub balances: HashMap<String, Vec<Token>>, // Maps user IDs to their tokens
+    pub balances: HashMap<String, Vec<Token>>,
 }
 
 impl TokenManager {
-    /// Creates a new TokenManager instance.
     pub fn new() -> Self {
         Self {
             balances: HashMap::new(),
         }
     }
 
-    /// Adds tokens to a user's balance.
     pub fn add_tokens(&mut self, user_id: &str, tokens: Vec<Token>) {
-        let user_balance = self
-            .balances
+        self.balances
             .entry(user_id.to_string())
-            .or_insert(Vec::new());
-        user_balance.extend(tokens);
+            .or_default()
+            .extend(tokens);
     }
 
-    /// Transfers tokens between users.
+    /// Transfers exactly `amount` of non-expired tokens. On failure, balances are unchanged.
+    /// When a selected token exceeds the remaining amount, change is returned to the sender.
     pub fn transfer_tokens(&mut self, from_user: &str, to_user: &str, amount: u64) -> bool {
-        if let Some(from_balance) = self.balances.get_mut(from_user) {
-            let mut transferred_amount = 0;
-            let mut transferred_tokens = Vec::new();
+        if amount == 0 {
+            return false;
+        }
 
-            // Transfer tokens until the requested amount is reached
-            from_balance.retain(|token| {
-                if transferred_amount < amount && !token.has_expired() {
-                    transferred_amount += token.amount;
-                    transferred_tokens.push(token.clone());
-                    false // Remove from `from_user`'s balance
+        let from_balance = match self.balances.get(from_user) {
+            Some(balance) => balance,
+            None => return false,
+        };
+
+        let mut remaining = amount;
+        let mut selected: Vec<(usize, Token)> = Vec::new();
+
+        for (index, token) in from_balance.iter().enumerate() {
+            if remaining == 0 {
+                break;
+            }
+            if token.has_expired() {
+                continue;
+            }
+
+            let take = token.amount.min(remaining);
+            selected.push((
+                index,
+                Token {
+                    amount: take,
+                    expiration_time: token.expiration_time,
+                },
+            ));
+            remaining -= take;
+        }
+
+        if remaining != 0 {
+            return false;
+        }
+
+        // Apply removals from highest index so earlier indices stay valid.
+        let mut sorted = selected;
+        sorted.sort_by(|a, b| b.0.cmp(&a.0));
+
+        let mut transferred = Vec::new();
+        {
+            let from_balance = self.balances.get_mut(from_user).expect("checked above");
+            for (index, taken) in sorted {
+                let token = &mut from_balance[index];
+                if taken.amount >= token.amount {
+                    transferred.push(from_balance.remove(index));
                 } else {
-                    true
+                    token.amount -= taken.amount;
+                    transferred.push(taken);
                 }
-            });
-
-            // If the total amount was transferred, update recipient's balance
-            if transferred_amount >= amount {
-                self.add_tokens(to_user, transferred_tokens);
-                return true;
             }
         }
-        false
+
+        self.add_tokens(to_user, transferred);
+        true
     }
 
-    /// Gets the user's total balance of valid (non-expired) tokens.
     pub fn get_balance(&self, user_id: &str) -> u64 {
-        if let Some(tokens) = self.balances.get(user_id) {
-            tokens
-                .iter()
-                .filter(|token| !token.has_expired())
-                .map(|t| t.amount)
-                .sum()
-        } else {
-            0
-        }
+        self.balances
+            .get(user_id)
+            .map(|tokens| {
+                tokens
+                    .iter()
+                    .filter(|token| !token.has_expired())
+                    .map(|t| t.amount)
+                    .sum()
+            })
+            .unwrap_or(0)
+    }
+}
+
+impl Default for TokenManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -69,11 +106,13 @@ mod tests {
     #[test]
     fn test_add_and_get_balance() {
         let mut manager = TokenManager::new();
-        let tokens = vec![Token {
-            amount: 100,
-            expiration_time: None,
-        }];
-        manager.add_tokens("user_1", tokens);
+        manager.add_tokens(
+            "user_1",
+            vec![Token {
+                amount: 100,
+                expiration_time: None,
+            }],
+        );
 
         assert_eq!(manager.get_balance("user_1"), 100);
     }
@@ -81,15 +120,48 @@ mod tests {
     #[test]
     fn test_transfer_tokens() {
         let mut manager = TokenManager::new();
-        let tokens = vec![Token {
-            amount: 100,
-            expiration_time: None,
-        }];
-        manager.add_tokens("user_1", tokens);
+        manager.add_tokens(
+            "user_1",
+            vec![Token {
+                amount: 100,
+                expiration_time: None,
+            }],
+        );
 
-        let success = manager.transfer_tokens("user_1", "user_2", 100);
-        assert!(success);
+        assert!(manager.transfer_tokens("user_1", "user_2", 100));
         assert_eq!(manager.get_balance("user_2"), 100);
         assert_eq!(manager.get_balance("user_1"), 0);
+    }
+
+    #[test]
+    fn test_transfer_with_change() {
+        let mut manager = TokenManager::new();
+        manager.add_tokens(
+            "user_1",
+            vec![Token {
+                amount: 100,
+                expiration_time: None,
+            }],
+        );
+
+        assert!(manager.transfer_tokens("user_1", "user_2", 40));
+        assert_eq!(manager.get_balance("user_2"), 40);
+        assert_eq!(manager.get_balance("user_1"), 60);
+    }
+
+    #[test]
+    fn test_failed_transfer_does_not_mutate() {
+        let mut manager = TokenManager::new();
+        manager.add_tokens(
+            "user_1",
+            vec![Token {
+                amount: 30,
+                expiration_time: None,
+            }],
+        );
+
+        assert!(!manager.transfer_tokens("user_1", "user_2", 50));
+        assert_eq!(manager.get_balance("user_1"), 30);
+        assert_eq!(manager.get_balance("user_2"), 0);
     }
 }

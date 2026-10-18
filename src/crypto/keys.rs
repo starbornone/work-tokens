@@ -1,8 +1,7 @@
-use ed25519_dalek::{Keypair, PublicKey, SecretKey, SIGNATURE_LENGTH};
+use ed25519_dalek::{Keypair, PublicKey, SecretKey};
 use rand::rngs::OsRng;
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
 
 /// Generates a new Ed25519 keypair (public and private keys).
 ///
@@ -89,22 +88,32 @@ mod tests {
         assert_eq!(keypair.public.as_bytes().len(), 32);
     }
 
+    fn temp_key_paths(label: &str) -> (String, String) {
+        let id = std::thread::current().id();
+        let dir = std::env::temp_dir();
+        (
+            dir.join(format!("work_tokens_{label}_priv_{id:?}.key"))
+                .to_string_lossy()
+                .into_owned(),
+            dir.join(format!("work_tokens_{label}_pub_{id:?}.key"))
+                .to_string_lossy()
+                .into_owned(),
+        )
+    }
+
     #[test]
     fn test_save_and_load_keypair() {
         let keypair = generate_keypair();
-        let private_key_path = "test_private.key";
-        let public_key_path = "test_public.key";
+        let (private_key_path, public_key_path) = temp_key_paths("save_load");
 
-        save_keypair(&keypair, private_key_path, public_key_path).expect("Failed to save keys");
+        save_keypair(&keypair, &private_key_path, &public_key_path).expect("Failed to save keys");
 
         let loaded_keypair =
-            load_keypair_from_private(private_key_path).expect("Failed to load private key");
+            load_keypair_from_private(&private_key_path).expect("Failed to load private key");
 
-        // Verify that the loaded keypair matches the original
         assert_eq!(keypair.secret.as_bytes(), loaded_keypair.secret.as_bytes());
         assert_eq!(keypair.public.as_bytes(), loaded_keypair.public.as_bytes());
 
-        // Clean up test files
         remove_file(private_key_path).unwrap();
         remove_file(public_key_path).unwrap();
     }
@@ -112,17 +121,16 @@ mod tests {
     #[test]
     fn test_load_public_key() {
         let keypair = generate_keypair();
-        let public_key_path = "test_public.key";
+        let (private_key_path, public_key_path) = temp_key_paths("load_pub");
 
-        save_keypair(&keypair, "unused_private.key", public_key_path).expect("Failed to save keys");
+        save_keypair(&keypair, &private_key_path, &public_key_path).expect("Failed to save keys");
 
         let loaded_public_key =
-            load_public_key(public_key_path).expect("Failed to load public key");
+            load_public_key(&public_key_path).expect("Failed to load public key");
 
-        // Verify that the loaded public key matches the original
         assert_eq!(keypair.public.as_bytes(), loaded_public_key.as_bytes());
 
-        // Clean up test files
         remove_file(public_key_path).unwrap();
+        remove_file(private_key_path).unwrap();
     }
 }
