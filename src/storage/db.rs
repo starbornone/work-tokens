@@ -1,7 +1,5 @@
 use crate::blockchain::block::Block;
 use crate::blockchain::transaction::Transaction;
-use ed25519_dalek::Keypair;
-use rand::rngs::OsRng;
 use rusqlite::{params, Connection, Result};
 
 /// Struct to manage database connections and operations.
@@ -15,10 +13,11 @@ impl Database {
         let connection = Connection::open(db_path)?;
 
         // Set up the tables if they don't already exist
+        connection.execute("PRAGMA foreign_keys = ON", [])?;
+
         connection.execute(
             "CREATE TABLE IF NOT EXISTS blocks (
-                id INTEGER PRIMARY KEY,
-                block_hash TEXT NOT NULL,
+                block_hash TEXT PRIMARY KEY,
                 previous_hash TEXT NOT NULL,
                 data TEXT NOT NULL
             )",
@@ -107,15 +106,13 @@ mod tests {
 
     #[test]
     fn test_save_and_get_transactions() {
+        use crate::crypto::keys::generate_keypair;
+
         let db = Database::new(":memory:").expect("Failed to create database");
         let block = Block::new(1, "prev_hash".to_string(), vec![], 0);
         db.save_block(&block).expect("Failed to save block");
 
-        // Generate a keypair for the sender's public key
-        let mut csprng = OsRng;
-        let keypair: Keypair = Keypair::generate(&mut csprng);
-
-        // Create a transaction using the sender's public key
+        let keypair = generate_keypair();
         let transaction = Transaction::new(keypair.public, "receiver".to_string(), 100, None);
 
         // Save the transaction in the database

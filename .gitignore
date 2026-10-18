@@ -2,6 +2,11 @@
 .DS_Store
 desktop.ini
 
+## Local node data
+*.db
+*.db-journal
+*.key
+
 ## Editor
 *.swp
 *.swo
