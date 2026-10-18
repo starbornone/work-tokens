@@ -19,7 +19,7 @@ pub struct RpcError {
 }
 
 /// Starts the RPC server.
-pub async fn start_rpc_server(network: P2PNetwork) {
+pub async fn start_rpc_server(_network: P2PNetwork) {
     // Route to get the latest block.
     let get_block = warp::path!("block" / "latest")
         .map(move || {
@@ -66,9 +66,12 @@ fn get_latest_block() -> Option<Block> {
     Some(Block::new(1, "prev_hash".to_string(), vec![], 0))
 }
 
-/// Example function to submit a transaction.
+/// Validates a transaction before acceptance. Mempool / P2P broadcast is not wired yet.
 fn submit_transaction(tx: Transaction) -> bool {
-    // Add logic to validate and submit the transaction to the P2P network.
-    println!("Submitting transaction: {:?}", tx);
+    if !tx.validate() {
+        log::warn!("Rejected invalid transaction {}", tx.id);
+        return false;
+    }
+    log::info!("Accepted transaction {} for later broadcast", tx.id);
     true
 }
